@@ -17,6 +17,7 @@ export async function POST(request: Request) {
             numberOfChildren,
         } = body;
 
+        // Required fields
         if (
             !fullName ||
             !countryCode ||
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
             );
         }
 
+        // Validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         const phoneRegex = /^[0-9]{7,15}$/;
 
@@ -58,12 +60,16 @@ export async function POST(request: Request) {
             );
         }
 
+        // Travel date validation
         const selectedDate = new Date(travelDate);
-        const today = new Date();
 
+        const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        if (Number.isNaN(selectedDate.getTime()) || selectedDate <= today) {
+        if (
+            Number.isNaN(selectedDate.getTime()) ||
+            selectedDate <= today
+        ) {
             return NextResponse.json(
                 {
                     success: false,
@@ -73,6 +79,7 @@ export async function POST(request: Request) {
             );
         }
 
+        // Number of people validation
         if (Number(numberOfPeople) < 1) {
             return NextResponse.json(
                 {
@@ -83,7 +90,8 @@ export async function POST(request: Request) {
             );
         }
 
-        if (Number(numberOfChildren) < 0) {
+        // Number of children validation
+        if (Number(numberOfChildren || 0) < 0) {
             return NextResponse.json(
                 {
                     success: false,
@@ -93,6 +101,7 @@ export async function POST(request: Request) {
             );
         }
 
+        // Hotel validation
         if (!["Standard", "Deluxe", "Luxury"].includes(hotelCategory)) {
             return NextResponse.json(
                 {
@@ -103,8 +112,10 @@ export async function POST(request: Request) {
             );
         }
 
+        // Connect to MongoDB
         await connectDB();
 
+        // Save enquiry
         await Enquiry.create({
             fullName: fullName.trim(),
             countryCode,
@@ -131,6 +142,33 @@ export async function POST(request: Request) {
             {
                 success: false,
                 message: "Unable to submit enquiry. Please try again later.",
+            },
+            { status: 500 }
+        );
+    }
+}
+
+export async function GET() {
+    try {
+        // Connect to MongoDB
+        await connectDB();
+
+        // Get all enquiries
+        const enquiries = await Enquiry.find({})
+            .sort({ createdAt: -1 })
+            .lean();
+
+        return NextResponse.json({
+            success: true,
+            enquiries,
+        });
+    } catch (error) {
+        console.error("GET_ENQUIRY_ERROR:", error);
+
+        return NextResponse.json(
+            {
+                success: false,
+                message: "Unable to fetch enquiries.",
             },
             { status: 500 }
         );
